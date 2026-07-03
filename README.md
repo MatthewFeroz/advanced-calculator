@@ -27,6 +27,10 @@ apart at a glance.
 - **Dynamic help menu** *(optional feature)* — commands register themselves
   with a `@command` decorator and operations describe themselves through
   their docstrings, so `help` always reflects exactly what is available.
+- **Command pattern** *(optional feature)* — every user request is wrapped
+  in a command object with an `execute()` method. `OperationCommand` carries
+  its two operands inside it, so requests are fully parameterized and can be
+  held in a queue and executed later.
 
 ## Project Structure
 
