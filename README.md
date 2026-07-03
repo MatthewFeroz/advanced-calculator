@@ -1,4 +1,6 @@
-# Advanced Calculator
+<h1 align="center">
+  <img src="assets/rainbow-title.svg" alt="Advanced Calculator" width="640">
+</h1>
 
 A command-line calculator built for IS601 that goes well beyond basic math.
 It supports ten arithmetic operations, keeps a full calculation history with
