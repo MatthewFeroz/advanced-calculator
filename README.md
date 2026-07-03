@@ -24,14 +24,14 @@ apart at a glance.
 - **Robust error handling** — custom exceptions (`ValidationError`,
   `OperationError`, `ConfigurationError`) mean bad input produces a helpful
   red message instead of a crash.
-- **Color-coded output** *(optional feature)* — colorama prints results in
+- **Color-coded output** *(optional feature 1)* — colorama prints results in
   green, warnings in yellow, errors in red, and information in cyan. For
   extra fun, the `rainbow` command toggles rainbow-colored results, painting
   each character of the answer a different color.
-- **Dynamic help menu** *(optional feature)* — commands register themselves
+- **Dynamic help menu** *(optional feature 2)* — commands register themselves
   with a `@command` decorator and operations describe themselves through
   their docstrings, so `help` always reflects exactly what is available.
-- **Command pattern** *(optional feature)* — every user request is wrapped
+- **Command pattern** *(optional feature 3)* — every user request is wrapped
   in a command object with an `execute()` method. `OperationCommand` carries
   its two operands inside it, so requests are fully parameterized and can be
   held in a queue and executed later.
@@ -148,7 +148,7 @@ coverage drop.
 
 ## Logging
 
-All events — startup, every calculation, saves, loads, undo/redo, and
-errors — are written to the file named by `CALCULATOR_LOG_FILE`
+All events, startup, every calculation, saves, loads, undo/redo, and
+errors,are written to the file named by `CALCULATOR_LOG_FILE`
 (default `logs/calculator.log`) with timestamps and severity levels
 (INFO, WARNING, ERROR).
