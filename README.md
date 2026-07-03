@@ -148,7 +148,7 @@ coverage drop.
 
 ## Logging
 
-All events, startup, every calculation, saves, loads, undo/redo, and
-errors,are written to the file named by `CALCULATOR_LOG_FILE`
+Every event is written to the file named by `CALCULATOR_LOG_FILE`
 (default `logs/calculator.log`) with timestamps and severity levels
-(INFO, WARNING, ERROR).
+(INFO, WARNING, ERROR). This includes startup, every calculation,
+saves, loads, undo/redo, and any errors.
