@@ -2,6 +2,7 @@
 
 from types import SimpleNamespace
 from unittest.mock import Mock
+import re
 import runpy
 
 import pytest
@@ -10,6 +11,7 @@ import main
 from app.calculator import Calculator
 from app.calculator_repl import (
     _COMMANDS,
+    RAINBOW_COLORS,
     ExitREPL,
     OperationCommand,
     ReplCommand,
@@ -18,7 +20,21 @@ from app.calculator_repl import (
     build_help,
     calculator_repl,
     command,
+    rainbow_text,
+    settings,
 )
+
+
+def strip_ansi(text):
+    """Remove color escape codes so tests can check the plain words."""
+    return re.sub(r"\x1b\[[0-9;]*m", "", text)
+
+
+@pytest.fixture
+def rainbow_reset():
+    """Make sure rainbow mode is switched back off after a test."""
+    yield
+    settings.rainbow = False
 from app.operations import OperationFactory
 from tests.conftest import feed_input
 
@@ -62,6 +78,38 @@ def test_new_command_appears_in_help_automatically():
         assert "Say hello to the user" in build_help()
     finally:
         del _COMMANDS["greet"]
+
+
+def test_rainbow_text_keeps_the_words_and_adds_colors():
+    """Rainbow text should still say the same thing, just in many colors."""
+    painted = rainbow_text("Result: 5")
+    assert strip_ansi(painted) == "Result: 5"
+    for color in RAINBOW_COLORS:
+        assert color in painted
+
+
+def test_rainbow_toggle_switches_on_and_off(monkeypatch, capsys, calculator, rainbow_reset):
+    feed_input(monkeypatch, ["rainbow", "rainbow", "exit"])
+    calculator_repl(calculator)
+    output = strip_ansi(capsys.readouterr().out)
+    assert "Rainbow mode ON" in output
+    assert "Rainbow mode off" in output
+    assert settings.rainbow is False
+
+
+def test_rainbow_mode_colors_the_result(monkeypatch, capsys, calculator, rainbow_reset):
+    """With rainbow on, the result line should carry the whole color wheel."""
+    feed_input(monkeypatch, ["rainbow", "add", "2", "3", "exit"])
+    calculator_repl(calculator)
+    output = capsys.readouterr().out
+    assert "Result: 5" in strip_ansi(output)
+    for color in RAINBOW_COLORS:
+        assert color in output
+
+
+def test_rainbow_appears_in_help_menu():
+    """The toggle registers itself, so help should already know about it."""
+    assert "rainbow" in strip_ansi(build_help())
 
 
 def test_repl_command_base_is_abstract():

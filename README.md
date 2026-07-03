@@ -23,7 +23,9 @@ apart at a glance.
   `OperationError`, `ConfigurationError`) mean bad input produces a helpful
   red message instead of a crash.
 - **Color-coded output** *(optional feature)* — colorama prints results in
-  green, warnings in yellow, errors in red, and information in cyan.
+  green, warnings in yellow, errors in red, and information in cyan. For
+  extra fun, the `rainbow` command toggles rainbow-colored results, painting
+  each character of the answer a different color.
 - **Dynamic help menu** *(optional feature)* — commands register themselves
   with a `@command` decorator and operations describe themselves through
   their docstrings, so `help` always reflects exactly what is available.
@@ -118,6 +120,7 @@ Result: 25
 | `clear` | Delete the history (undoable) |
 | `undo` / `redo` | Step backward / forward through history changes |
 | `save` / `load` | Write / read the history CSV manually |
+| `rainbow` | Toggle rainbow-colored results on or off |
 | `help` | Show the (dynamically generated) command list |
 | `exit` | Save history and quit |
 

@@ -19,7 +19,7 @@ Three of the assignment's optional features live here:
 """
 
 from abc import ABC, abstractmethod
-from typing import ClassVar
+import itertools
 
 from colorama import Fore, Style, init as colorama_init
 
@@ -56,6 +56,39 @@ def print_warning(message: str) -> None:
 def print_info(message: str) -> None:
     """Show neutral information in cyan."""
     print(Fore.CYAN + message)
+
+
+# ----- Rainbow mode ---------------------------------------------------------
+
+
+class DisplaySettings:
+    """User-togglable display preferences for the REPL."""
+
+    def __init__(self) -> None:
+        self.rainbow = False
+
+
+# One shared settings object for the whole REPL session.
+settings = DisplaySettings()
+
+# The color wheel that rainbow mode cycles through, character by character.
+RAINBOW_COLORS = [Fore.RED, Fore.YELLOW, Fore.GREEN, Fore.CYAN, Fore.BLUE, Fore.MAGENTA]
+
+
+def rainbow_text(text: str) -> str:
+    """Paint each character of `text` the next color of the rainbow."""
+    colored = "".join(
+        color + char for color, char in zip(itertools.cycle(RAINBOW_COLORS), text)
+    )
+    return colored + Style.RESET_ALL
+
+
+def print_result(message: str) -> None:
+    """Show a calculation result — green normally, rainbow when toggled on."""
+    if settings.rainbow:
+        print(rainbow_text(message))
+    else:
+        print_success(message)
 
 
 # ----- Command pattern base + dynamic registry (Decorator pattern) ---------
@@ -123,7 +156,7 @@ class OperationCommand(ReplCommand):
 
     def execute(self, calc: Calculator) -> None:
         result = calc.calculate(self.operation_name, self.left, self.right)
-        print_success(f"Result: {result}")
+        print_result(f"Result: {result}")
 
 
 @command("history", "Show every calculation stored in history")
@@ -187,6 +220,18 @@ class LoadCommand(ReplCommand):
     def execute(self, calc: Calculator) -> None:
         count = calc.load_history()
         print_success(f"Loaded {count} calculation(s).")
+
+
+@command("rainbow", "Toggle rainbow-colored results on or off")
+class RainbowCommand(ReplCommand):
+    """Flip rainbow mode — purely for fun."""
+
+    def execute(self, calc: Calculator) -> None:
+        settings.rainbow = not settings.rainbow
+        if settings.rainbow:
+            print(rainbow_text("Rainbow mode ON! Results will now sparkle."))
+        else:
+            print_info("Rainbow mode off. Results are green again.")
 
 
 @command("help", "Show this help menu")
