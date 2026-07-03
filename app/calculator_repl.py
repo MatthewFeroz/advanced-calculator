@@ -1,19 +1,25 @@
 """The interactive command-line interface (REPL) with color-coded output.
 
-Two of the assignment's optional features live here:
+Three of the assignment's optional features live here:
 
 1. Color-coded output (colorama): results print in green, errors in red,
    warnings in yellow, and informational text in cyan, so the user can
    tell at a glance whether something worked.
 
 2. A dynamic help menu (Decorator pattern): every non-math command is
-   registered with the `@command` decorator, which stores its name and a
+   registered with the `@command` decorator, which stores its class and a
    one-line description in a registry. The help menu is built from that
    registry plus the OperationFactory, so adding a new command or
    operation updates `help` automatically — no manual edits needed.
+
+3. The Command pattern: every request the user can make is wrapped up as
+   an object with an `execute()` method. `OperationCommand` even carries
+   its two operands inside it, which means requests can be parameterized,
+   stored in a list, and run later — a queue of pending work.
 """
 
-from typing import Callable
+from abc import ABC, abstractmethod
+from typing import ClassVar
 
 from colorama import Fore, Style, init as colorama_init
 
@@ -52,22 +58,37 @@ def print_info(message: str) -> None:
     print(Fore.CYAN + message)
 
 
-# ----- Dynamic command registry (Decorator pattern) ------------------------
-
-# Maps a command name to (handler function, one-line help description).
-_COMMANDS: dict[str, tuple[Callable[[Calculator], None], str]] = {}
+# ----- Command pattern base + dynamic registry (Decorator pattern) ---------
 
 
-def command(name: str, description: str) -> Callable:
-    """Decorator that registers a REPL command and its help text.
+class ReplCommand(ABC):
+    """A user request wrapped up as an object (the Command pattern).
 
-    Any function decorated with `@command("name", "what it does")` is
+    Because every request is an object with one `execute` method, commands
+    can be created in one place, handed around, put in a queue, and run
+    later — the REPL loop never needs to know what each one actually does.
+    """
+
+    @abstractmethod
+    def execute(self, calc: Calculator) -> None:
+        """Carry out the request against the given calculator."""
+        raise NotImplementedError  # pragma: no cover
+
+
+# Maps a command name to (command class, one-line help description).
+_COMMANDS: dict[str, tuple[type[ReplCommand], str]] = {}
+
+
+def command(name: str, description: str):
+    """Decorator that registers a command class and its help text.
+
+    Any class decorated with `@command("name", "what it does")` is
     automatically callable from the prompt and listed in the help menu.
     """
 
-    def decorator(func: Callable[[Calculator], None]) -> Callable[[Calculator], None]:
-        _COMMANDS[name] = (func, description)
-        return func
+    def decorator(cls: type[ReplCommand]) -> type[ReplCommand]:
+        _COMMANDS[name] = (cls, description)
+        return cls
 
     return decorator
 
@@ -84,64 +105,106 @@ def build_help() -> str:
     return "\n".join(lines)
 
 
-# ----- Registered commands --------------------------------------------------
+# ----- Concrete commands -----------------------------------------------------
+
+
+class OperationCommand(ReplCommand):
+    """A math request with its operands packaged inside it.
+
+    This is the parameterized command: `OperationCommand("add", "2", "3")`
+    fully describes one calculation, so a list of these objects is a queue
+    of pending calculations that can be executed whenever you like.
+    """
+
+    def __init__(self, operation_name: str, left: str, right: str) -> None:
+        self.operation_name = operation_name
+        self.left = left
+        self.right = right
+
+    def execute(self, calc: Calculator) -> None:
+        result = calc.calculate(self.operation_name, self.left, self.right)
+        print_success(f"Result: {result}")
 
 
 @command("history", "Show every calculation stored in history")
-def _cmd_history(calc: Calculator) -> None:
-    history = calc.show_history()
-    if not history:
-        print_warning("No calculations in history.")
-        return
-    print_info("Calculation History:")
-    for index, entry in enumerate(history, start=1):
-        print(f"{index}. {entry}")
+class HistoryCommand(ReplCommand):
+    """Print the numbered calculation history."""
+
+    def execute(self, calc: Calculator) -> None:
+        history = calc.show_history()
+        if not history:
+            print_warning("No calculations in history.")
+            return
+        print_info("Calculation History:")
+        for index, entry in enumerate(history, start=1):
+            print(f"{index}. {entry}")
 
 
 @command("clear", "Delete all calculations from history")
-def _cmd_clear(calc: Calculator) -> None:
-    calc.clear_history()
-    print_success("History cleared.")
+class ClearCommand(ReplCommand):
+    """Empty the history (still undoable)."""
+
+    def execute(self, calc: Calculator) -> None:
+        calc.clear_history()
+        print_success("History cleared.")
 
 
 @command("undo", "Undo the last calculation")
-def _cmd_undo(calc: Calculator) -> None:
-    if calc.undo():
-        print_success("Operation undone.")
-    else:
-        print_warning("Nothing to undo.")
+class UndoCommand(ReplCommand):
+    """Step the history back to its previous state."""
+
+    def execute(self, calc: Calculator) -> None:
+        if calc.undo():
+            print_success("Operation undone.")
+        else:
+            print_warning("Nothing to undo.")
 
 
 @command("redo", "Redo the last undone calculation")
-def _cmd_redo(calc: Calculator) -> None:
-    if calc.redo():
-        print_success("Operation redone.")
-    else:
-        print_warning("Nothing to redo.")
+class RedoCommand(ReplCommand):
+    """Re-apply the most recently undone change."""
+
+    def execute(self, calc: Calculator) -> None:
+        if calc.redo():
+            print_success("Operation redone.")
+        else:
+            print_warning("Nothing to redo.")
 
 
 @command("save", "Save calculation history to the CSV file")
-def _cmd_save(calc: Calculator) -> None:
-    calc.save_history()
-    print_success("History saved.")
+class SaveCommand(ReplCommand):
+    """Write the history CSV on demand."""
+
+    def execute(self, calc: Calculator) -> None:
+        calc.save_history()
+        print_success("History saved.")
 
 
 @command("load", "Load calculation history from the CSV file")
-def _cmd_load(calc: Calculator) -> None:
-    count = calc.load_history()
-    print_success(f"Loaded {count} calculation(s).")
+class LoadCommand(ReplCommand):
+    """Read the history CSV back in."""
+
+    def execute(self, calc: Calculator) -> None:
+        count = calc.load_history()
+        print_success(f"Loaded {count} calculation(s).")
 
 
 @command("help", "Show this help menu")
-def _cmd_help(calc: Calculator) -> None:
-    print(build_help())
+class HelpCommand(ReplCommand):
+    """Print the dynamically generated help menu."""
+
+    def execute(self, calc: Calculator) -> None:
+        print(build_help())
 
 
 @command("exit", "Save history and quit the calculator")
-def _cmd_exit(calc: Calculator) -> None:
-    calc.save_history()
-    print_success("History saved.")
-    raise ExitREPL
+class ExitCommand(ReplCommand):
+    """Save everything, then stop the loop."""
+
+    def execute(self, calc: Calculator) -> None:
+        calc.save_history()
+        print_success("History saved.")
+        raise ExitREPL
 
 
 # ----- Input helpers ---------------------------------------------------------
@@ -163,26 +226,25 @@ def _read_operand(label: str) -> str | None:
     return value
 
 
-def _run_operation(calc: Calculator, operation_name: str) -> None:
-    """Collect two numbers from the user and show the colored result."""
+def _build_operation_command(operation_name: str) -> OperationCommand | None:
+    """Collect two numbers and wrap them in a parameterized command object."""
     print_info("Enter numbers, or type 'cancel' to abort.")
     left = _read_operand("First number: ")
     if left is None:
         print_warning("Operation cancelled.")
-        return
+        return None
     right = _read_operand("Second number: ")
     if right is None:
         print_warning("Operation cancelled.")
-        return
-    result = calc.calculate(operation_name, left, right)
-    print_success(f"Result: {result}")
+        return None
+    return OperationCommand(operation_name, left, right)
 
 
 # ----- The main loop ----------------------------------------------------------
 
 
 def calculator_repl(calculator: Calculator | None = None) -> None:
-    """Read a command, run it, print the outcome — repeat until exit."""
+    """Read a command, turn it into a command object, execute it — repeat."""
     calc = calculator or Calculator()
     print_info("Advanced Calculator started. Type 'help' for commands.")
     operations = set(OperationFactory.commands())
@@ -193,10 +255,12 @@ def calculator_repl(calculator: Calculator | None = None) -> None:
             if command_name == "":
                 continue
             if command_name in _COMMANDS:
-                handler, _ = _COMMANDS[command_name]
-                handler(calc)
+                command_class, _ = _COMMANDS[command_name]
+                command_class().execute(calc)
             elif command_name in operations:
-                _run_operation(calc, command_name)
+                operation_command = _build_operation_command(command_name)
+                if operation_command is not None:
+                    operation_command.execute(calc)
             else:
                 print_error(f"Unknown command: {command_name}. Type 'help' for commands.")
         except KeyboardInterrupt:

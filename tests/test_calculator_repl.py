@@ -11,6 +11,8 @@ from app.calculator import Calculator
 from app.calculator_repl import (
     _COMMANDS,
     ExitREPL,
+    OperationCommand,
+    ReplCommand,
     _prompt,
     _read_operand,
     build_help,
@@ -51,14 +53,45 @@ def test_new_command_appears_in_help_automatically():
     """The Decorator pattern should pick up new commands with zero manual edits."""
 
     @command("greet", "Say hello to the user")
-    def _cmd_greet(calc):
-        print("hello")  # pragma: no cover
+    class GreetCommand(ReplCommand):
+        def execute(self, calc):
+            print("hello")  # pragma: no cover
 
     try:
         assert "greet" in _COMMANDS
         assert "Say hello to the user" in build_help()
     finally:
         del _COMMANDS["greet"]
+
+
+def test_repl_command_base_is_abstract():
+    """The Command base class should not be instantiated directly."""
+    with pytest.raises(TypeError):
+        ReplCommand()
+
+
+def test_operation_command_carries_its_parameters(capsys, calculator):
+    """A command object fully describes one calculation (parameterization)."""
+    operation_command = OperationCommand("add", "2", "3")
+    operation_command.execute(calculator)
+    assert "Result: 5" in capsys.readouterr().out
+    assert calculator.show_history() == ["add(2, 3) = 5"]
+
+
+def test_operation_commands_can_be_queued(capsys, calculator):
+    """Command objects can wait in a list and run later (queuing)."""
+    queue = [
+        OperationCommand("add", "1", "1"),
+        OperationCommand("multiply", "3", "4"),
+        OperationCommand("abs_diff", "2", "9"),
+    ]
+    for queued in queue:
+        queued.execute(calculator)
+    assert calculator.show_history() == [
+        "add(1, 1) = 2",
+        "multiply(3, 4) = 12",
+        "abs_diff(2, 9) = 7",
+    ]
 
 
 def test_repl_help_blank_unknown_and_exit(monkeypatch, capsys, calculator):
