@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import pytest
 
+from app.calculator import Calculator
 from app.calculator_config import CalculatorConfig
 
 
@@ -17,6 +18,12 @@ def config(tmp_path):
         precision=4,
         max_input_value=Decimal("1000"),
     )
+
+
+@pytest.fixture
+def calculator(config):
+    """A calculator wired to the small test configuration above."""
+    return Calculator(config)
 
 
 def feed_input(monkeypatch, values):
