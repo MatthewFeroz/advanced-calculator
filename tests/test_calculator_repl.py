@@ -98,6 +98,18 @@ def test_repl_runs_new_operations(monkeypatch, capsys, calculator, operation, le
     assert expected in capsys.readouterr().out
 
 
+def test_repl_history_when_empty(monkeypatch, capsys, calculator):
+    feed_input(monkeypatch, ["history", "exit"])
+    calculator_repl(calculator)
+    assert "No calculations in history" in capsys.readouterr().out
+
+
+def test_repl_redo_with_nothing_to_redo(monkeypatch, capsys, calculator):
+    feed_input(monkeypatch, ["redo", "exit"])
+    calculator_repl(calculator)
+    assert "Nothing to redo" in capsys.readouterr().out
+
+
 def test_repl_undo_and_redo(monkeypatch, capsys, calculator):
     feed_input(monkeypatch, ["undo", "add", "1", "1", "undo", "redo", "exit"])
     calculator_repl(calculator)
